@@ -5,8 +5,6 @@
 A deterministic cryptographic auditing toolkit for verifying BC.Game Mines
 provably fair round outcomes. For educational, research, and auditing use only.
 
-> **[BC.GAME MINES — GAME LINK: TO BE UPDATED]**
-
 ---
 
 ## ⚠ Disclaimer
