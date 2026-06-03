@@ -1,0 +1,12 @@
+{
+  "_comment": "Sample round for bc-mines-lab-v1.0 replay/audit testing.",
+  "_note": "Replace serverSeed, serverSeedHash, clientSeed, nonce with real values from BC.Game.",
+  "label": "sample-round-001",
+  "serverSeed": "example_server_seed_replace_with_real_value",
+  "serverSeedHash": "b94fdc9b4b38dac5f38d4c5dc7e30c1e3d4a2e1b5f6c7d8e9f0a1b2c3d4e5f6a",
+  "clientSeed": "e08765ff55cc72c1b02abc123def456",
+  "nonce": 0,
+  "mines": 3,
+  "claimedMines": null,
+  "_usage": "python main.py replay examples/sample_round.json"
+}

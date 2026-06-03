@@ -1,0 +1,32 @@
+[
+  {
+    "_comment": "Round 1 — replace with real BC.Game values",
+    "label": "batch-round-001",
+    "serverSeed": "server_seed_round_001",
+    "serverSeedHash": null,
+    "clientSeed": "client_seed_abc123",
+    "nonce": 0,
+    "mines": 3,
+    "claimedMines": null
+  },
+  {
+    "_comment": "Round 2 — nonce increments after each bet",
+    "label": "batch-round-002",
+    "serverSeed": "server_seed_round_001",
+    "serverSeedHash": null,
+    "clientSeed": "client_seed_abc123",
+    "nonce": 1,
+    "mines": 3,
+    "claimedMines": null
+  },
+  {
+    "_comment": "Round 3 — different mine count",
+    "label": "batch-round-003",
+    "serverSeed": "server_seed_round_003",
+    "serverSeedHash": null,
+    "clientSeed": "client_seed_abc123",
+    "nonce": 0,
+    "mines": 5,
+    "claimedMines": null
+  }
+]
