@@ -1,0 +1,13 @@
+# bc-mines-lab-v1.0 dependencies
+# Install: pip install -r requirements.txt
+# Termux:  pip install -r requirements.txt --break-system-packages
+
+# Terminal UI
+rich>=13.0.0
+
+# Testing
+pytest>=7.0.0
+pytest-cov>=4.0.0
+
+# Standard library only beyond this point:
+# hmac, hashlib, json, argparse, dataclasses, pathlib, datetime
