@@ -607,6 +607,159 @@ def _offer_export(result):
         console.print(f"  [green]Saved -> {export_markdown(result)}[/green]")
 
 # ---------------------------------------------------------------------------
+# NON-INTERACTIVE CLI (subcommands)
+# ---------------------------------------------------------------------------
+
+def _parse_claimed(raw: Optional[str]) -> Optional[list]:
+    """Parse a comma-separated '7,14,21' string into [7, 14, 21]."""
+    if not raw:
+        return None
+    try:
+        return [int(x.strip()) for x in raw.split(",") if x.strip()]
+    except ValueError:
+        raise SystemExit(f"Error: --claimed-mines must be comma-separated integers, got: {raw!r}")
+
+def cmd_audit(args) -> int:
+    """Audit a single round from command-line seed arguments."""
+    inp = AuditInput(
+        server_seed      = args.server_seed,
+        client_seed      = args.client_seed,
+        nonce            = args.nonce,
+        mine_count       = args.mines,
+        server_seed_hash = args.server_seed_hash,
+    )
+    result = auditor.audit(inp, claimed_mines=_parse_claimed(args.claimed_mines))
+    render_full_audit(result, show_chain=True, show_passes=args.show_passes, show_board=True)
+    if args.export:
+        console.print(f"  [green]Saved JSON     -> {export_json(result, path=args.export)}[/green]")
+    if args.export_md:
+        console.print(f"  [green]Saved Markdown -> {export_markdown(result, path=args.export_md)}[/green]")
+    # Exit non-zero if a commitment or position check failed
+    return 0 if result.fully_verified else 1
+
+def cmd_verify(args) -> int:
+    """Verify a commitment only: SHA256(serverSeed) == publishedHash."""
+    from core.crypto import verify_commitment
+    result = verify_commitment(args.server_seed, args.server_seed_hash)
+    ok  = result.verified
+    col = "green" if ok else "red"
+    console.print(Panel(
+        f"  [{col}]{'VERIFIED' if ok else 'FAILED'}[/{col}]\n\n"
+        f"  Server Seed:    [dim]{result.server_seed[:48]}...[/dim]\n"
+        f"  Published Hash: [dim]{result.published_hash}[/dim]\n"
+        f"  Computed Hash:  [{col}]{result.computed_hash}[/{col}]\n\n"
+        f"  [dim]{result.match_detail}[/dim]",
+        title=f"[bold]COMMITMENT {'VERIFIED' if ok else 'FAILED'}[/bold]",
+        border_style=col, padding=(1, 2),
+    ))
+    return 0 if ok else 1
+
+def cmd_replay(args) -> int:
+    """Replay (audit) a single round from a saved JSON file."""
+    p = Path(args.file)
+    if not p.exists():
+        console.print(f"  [red]File not found: {p}[/red]")
+        return 2
+    with open(p) as f:
+        data = json.load(f)
+    claimed = data.get("claimedMines") or data.get("claimed_mines")
+    result  = auditor.audit_from_dict(data, claimed_mines=claimed)
+    render_full_audit(result, show_chain=True, show_passes=args.show_passes, show_board=True)
+    if args.export:
+        console.print(f"  [green]Saved JSON     -> {export_json(result, path=args.export)}[/green]")
+    if args.export_md:
+        console.print(f"  [green]Saved Markdown -> {export_markdown(result, path=args.export_md)}[/green]")
+    return 0 if result.fully_verified else 1
+
+def cmd_batch(args) -> int:
+    """Batch-audit multiple rounds from a JSON array file."""
+    p = Path(args.file)
+    if not p.exists():
+        console.print(f"  [red]File not found: {p}[/red]")
+        return 2
+    with open(p) as f:
+        data = json.load(f)
+    if not isinstance(data, list):
+        console.print("  [red]File must be a JSON array.[/red]")
+        return 2
+    batch = auditor.audit_batch(data)
+    render_batch_summary(batch)
+    if args.export:
+        console.print(f"  [green]Saved JSON     -> {export_json(batch, path=args.export)}[/green]")
+    if args.export_md:
+        console.print(f"  [green]Saved Markdown -> {export_batch_markdown(batch, path=args.export_md)}[/green]")
+    return 0 if batch.errors == 0 and batch.failed == 0 else 1
+
+def cmd_info(args) -> int:
+    """Print system info and reference-board status non-interactively."""
+    v   = REF_VALIDATION
+    col = "green" if v["verified"] else "yellow"
+    console.print(Panel(
+        f"  [bold]bc-mines-lab[/bold]  v1.1\n\n"
+        f"  Algorithm:     BC.Game double-pass hash-rotation shuffle\n"
+        f"  Reference:     ALL_NUMS [{col}]{'VERIFIED' if v['verified'] else 'PARTIALLY UNCONFIRMED'}[/{col}]\n"
+        f"  Python:        {sys.version.split()[0]}\n"
+        f"  Reports dir:   reports/\n"
+        f"  Examples dir:  examples/\n"
+        + ("\n  [yellow]Warnings:[/yellow]\n" + "\n".join(f"  - {w}" for w in v.get("warnings",[])) if v.get("warnings") else ""),
+        title="[bold cyan]SYSTEM INFO[/bold cyan]", border_style="cyan", padding=(1, 2),
+    ))
+    return 0
+
+def build_parser():
+    import argparse
+    parser = argparse.ArgumentParser(
+        prog="main.py",
+        description="BC.Game Mines Provably Fair Audit Framework v1.1. "
+                    "Run with no arguments to launch the interactive menu.",
+    )
+    sub = parser.add_subparsers(dest="command")
+
+    # audit
+    pa = sub.add_parser("audit", help="Audit a single round from seed arguments")
+    pa.add_argument("--server-seed",      required=True,  help="Revealed server seed")
+    pa.add_argument("--server-seed-hash", default=None,   help="Published SHA256 hash (enables commitment check)")
+    pa.add_argument("--client-seed",      required=True,  help="Client seed")
+    pa.add_argument("--nonce",            type=int, default=0, help="Nonce (default 0)")
+    pa.add_argument("--mines",            type=int, required=True, help="Mine count")
+    pa.add_argument("--claimed-mines",    default=None,   help="Comma-separated 1-based positions, e.g. 7,14,21")
+    pa.add_argument("--export",           default=None,   help="Write JSON report to this path")
+    pa.add_argument("--export-md",        default=None,   help="Write Markdown report to this path")
+    pa.add_argument("--show-passes",      action="store_true", help="Show detailed shuffle pass tables")
+    pa.set_defaults(func=cmd_audit)
+
+    # verify
+    pv = sub.add_parser("verify", help="Verify a commitment (SHA256 of server seed) only")
+    pv.add_argument("--server-seed",      required=True,  help="Revealed server seed")
+    pv.add_argument("--server-seed-hash", required=True,  help="Published SHA256 hash")
+    pv.set_defaults(func=cmd_verify)
+
+    # replay
+    pr = sub.add_parser("replay", help="Replay/audit a round from a JSON file")
+    pr.add_argument("file",               help="Path to round JSON file")
+    pr.add_argument("--export",           default=None,   help="Write JSON report to this path")
+    pr.add_argument("--export-md",        default=None,   help="Write Markdown report to this path")
+    pr.add_argument("--show-passes",      action="store_true", help="Show detailed shuffle pass tables")
+    pr.set_defaults(func=cmd_replay)
+
+    # batch
+    pb = sub.add_parser("batch", help="Batch-audit multiple rounds from a JSON array file")
+    pb.add_argument("file",               help="Path to batch JSON file (array of rounds)")
+    pb.add_argument("--export",           default=None,   help="Write JSON report to this path")
+    pb.add_argument("--export-md",        default=None,   help="Write Markdown summary to this path")
+    pb.set_defaults(func=cmd_batch)
+
+    # info
+    pi = sub.add_parser("info", help="Show system info and reference-board status")
+    pi.set_defaults(func=cmd_info)
+
+    # menu (explicit)
+    pm = sub.add_parser("menu", help="Launch the interactive menu (default with no args)")
+    pm.set_defaults(func=None)
+
+    return parser
+
+# ---------------------------------------------------------------------------
 # MAIN MENU
 # ---------------------------------------------------------------------------
 
@@ -639,11 +792,30 @@ def main_menu():
         elif choice == "6": menu_info()
 
 def main():
+    parser = build_parser()
+    args   = parser.parse_args()
+
+    # No subcommand (or explicit "menu") -> interactive menu, preserving v1.1 behaviour.
+    if getattr(args, "func", None) is None:
+        try:
+            main_menu()
+        except KeyboardInterrupt:
+            console.print("\n[dim]Interrupted.[/dim]\n")
+            sys.exit(0)
+        except Exception as exc:
+            console.print(f"\n[bold red]Error:[/bold red] {exc}")
+            import traceback; traceback.print_exc()
+            sys.exit(1)
+        return
+
+    # Non-interactive subcommand dispatch.
     try:
-        main_menu()
+        sys.exit(args.func(args))
     except KeyboardInterrupt:
         console.print("\n[dim]Interrupted.[/dim]\n")
-        sys.exit(0)
+        sys.exit(130)
+    except SystemExit:
+        raise
     except Exception as exc:
         console.print(f"\n[bold red]Error:[/bold red] {exc}")
         import traceback; traceback.print_exc()

@@ -4,7 +4,7 @@ build-backend = "setuptools.backends.legacy:build"
 
 [project]
 name            = "bc-mines-lab"
-version         = "1.0.0"
+version         = "1.1.0"
 description     = "BC.Game Mines Provably Fair Audit Framework"
 readme          = "README.md"
 license         = { text = "MIT" }

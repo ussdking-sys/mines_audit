@@ -1,4 +1,4 @@
-# bc-mines-lab-v1.0
+# bc-mines-lab-v1.1
 
 **BC.Game Mines Provably Fair Audit Framework**
 
@@ -29,6 +29,7 @@ provably fair round outcomes. For educational, research, and auditing use only.
 - **Exports** full audit reports in JSON and Markdown
 - **Replays** historical rounds from saved JSON files
 - **Batch-audits** multiple rounds from a CSV/JSON list
+- **Simulates** boards with the exact algorithm to study distribution (menu: Simulation Lab)
 
 ---
 
@@ -68,7 +69,7 @@ See [`docs/algorithm.md`](docs/algorithm.md) for full details.
 ```bash
 # Clone
 git clone <repo-url>
-cd bc-mines-lab-v1.0
+cd bc-mines-lab-v1.1
 
 # Install
 pip install -r requirements.txt
@@ -82,7 +83,33 @@ python main.py info
 
 ---
 
+## Interactive Menu
+
+Run with **no arguments** to launch the interactive terminal UI:
+
+```bash
+python main.py
+```
+
+Menu options:
+
+| # | Option | Description |
+|---|--------|-------------|
+| 1 | Single Round Audit | Audit one round (manual entry, randomised seeds, or load from JSON) |
+| 2 | Commitment Verifier | Check `SHA256(serverSeed)` matches a published hash |
+| 3 | Batch Audit | Verify multiple rounds from a JSON array file |
+| 4 | Simulation Lab | Run boards with the exact algorithm (random / deterministic / nonce sweep) |
+| 5 | Seed Tools | Generate seeds, hash strings, preview boards, inspect `ALL_NUMS` |
+| 6 | System Info | Reference-board status and environment details |
+| Q | Quit | Exit |
+
+---
+
 ## CLI Usage
+
+All operations are also available non-interactively as subcommands.
+Subcommands exit `0` on success, `1` on a verification failure
+(bad commitment or mismatched positions), and `2` on a bad/missing input file.
 
 ### Audit a single round
 
@@ -190,11 +217,12 @@ pytest --tb=short            # compact output
 ## Project Structure
 
 ```
-bc-mines-lab-v1.0/
+bc-mines-lab-v1.1/
 ├── core/
 │   ├── auditor.py       High-level audit orchestrator
 │   ├── crypto.py        Exact BC.Game algorithm
 │   ├── models.py        Typed data structures
+│   ├── simulation.py    Simulation engine + seed generation
 │   ├── renderer.py      Terminal display
 │   └── report.py        JSON + Markdown export
 ├── data/
@@ -203,7 +231,7 @@ bc-mines-lab-v1.0/
 ├── reports/             Generated reports (auto-created)
 ├── tests/               pytest test suite
 ├── docs/                Full documentation
-├── main.py              CLI entry point
+├── main.py              Interactive menu + CLI entry point
 └── requirements.txt
 ```
 
